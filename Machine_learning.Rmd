@@ -1,0 +1,114 @@
+---
+title: "Machine Learning - Quality of exercise"
+author: "Vishnu Pothugunta"
+date: "July 26, 2019"
+output: html_document
+---
+
+## Executive Summary
+
+This report analyzes data from fitness devices and 
+will predict the quality of the exercise.The analyses
+will use Random forests machine learning algorithm to 
+correctly predict the classe of the exercise.
+
+Metric option - We will use Accuracy to judge the model
+since this is a categorical outcome.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setting up cwd and loading usefull libraries
+```{r lib}
+  setwd("C:/Users/Vishnu/Desktop/Coursera/Course 8")
+  library(caret)
+
+```
+## Download and Investigate data
+
+``` {r data}
+pmltraining <- read.csv(file="pml-training.csv",header=TRUE,na.strings=c("","NA"))
+pmltesting <- read.csv(file="pml-testing.csv",header=TRUE,na.strings=c("","NA"))
+#head(pmltraining)
+#summary(pmltraining)
+#str(pmltraining)
+#str(pmltesting)
+```
+
+Too many variables seem to have all NA's or missing info. Lot
+of them also seem to be just descriptive columns.
+Have to clean the columns.
+Use NSV to remove all variables that have zero variablilty
+
+Timestamp - other identity variables might not be very usefull except for some 
+person variables since a person's gps coordinates for an exercise might vary.
+But since the goal is to determine the classe without person id, I'm taking it off.
+
+## Preprocess
+``` {r pp}
+#colnames(pmltraining) 
+#colnames(pmltesting)
+
+nsv <- nearZeroVar(pmltraining,saveMetrics=TRUE)
+pmltraining1 <- pmltraining[,!nsv$nzv]
+pmltesting1 <- pmltesting[,!nsv$nzv]
+dim(pmltraining)
+dim(pmltraining1)
+#colnames(pmltraining1) == colnames(pmltesting1)
+
+
+#head(pmltraining1)
+#summary(pmltraining1)
+#str(pmltraining1)
+
+pmltraining2 <- pmltraining1[,-c(1:6)]
+pmltesting2 <- pmltesting1[,-c(1:6)]
+
+#colnames(pmltraining2) == colnames(pmltesting2)
+
+#str(pmltraining2)
+#str(pmltesting2)
+
+#10% of the training
+pmltraining3 <- pmltraining2[,colSums(is.na(pmltraining2)) <= 1900]
+
+#use same columns for both testing and training datasets.
+pmltesting3 <- pmltesting2[,colSums(is.na(pmltraining2)) <= 1900]
+
+#colnames(pmltraining3)
+#colnames(pmltesting3)
+
+```
+
+Setting the seed to produce reproducible results.
+```{r seed}
+set.seed(432124)
+```
+Train control - Cross validation, use k = 2 
+
+``` {r trcon}
+trcontrol <- trainControl(method="cv",number=2)
+```
+
+Random forests and boosting are one of the most accurate algorithms. I will be
+choosing random forests. Overfitting should be taken care of cross validation.
+``` {r model,cache=TRUE}
+modelfit <- train(classe~.,data=pmltraining3,method="rf",trcontrol=trcontrol,verbose=FALSE)
+
+#In sample error
+pmlpred<- predict(modelfit,newdata=pmltraining3)
+pmlinsam<- confusionMatrix(pmltraining3$classe,pmlpred)
+pmlinsam
+
+#Out of sample error
+pmlpredtest<- predict(modelfit,newdata=pmltesting3)
+
+#my solution.
+pmlpredtest
+```
+After conducting random forests machine learning algorithm,
+I'm predicting the classes to be `r pmlpredtest`
+
+
